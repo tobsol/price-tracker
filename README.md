@@ -1,7 +1,10 @@
 # 🏃 Running Shoe Price Tracker
 
-A simple full-stack project built with **React + TypeScript (Vite)** and **Node.js + Express**.  
-It tracks prices of running shoes (tested with [loepeshop.no](https://www.loepeshop.no)) and detects price drops.
+A full-stack web application that tracks and monitors running shoe prices in real time.  
+Built with **React**, **TypeScript**, and **Node.js (Express)** to demonstrate modern development, data scraping, and API integration skills.
+
+This project showcases a practical example of combining **frontend and backend development** to deliver live data insights — ideal for demonstrating hands-on full-stack experience in a professional portfolio.
+
 
 ---
 
