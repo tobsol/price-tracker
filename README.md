@@ -1,4 +1,4 @@
-# ????? Running Shoe Price Tracker
+# 🏃‍♂️ Running Shoe Price Tracker
 
 A simple full-stack project built with **React + TypeScript (Vite)** and **Node.js + Express**.  
 It tracks prices of running shoes (tested with [loepeshop.no](https://www.loepeshop.no)) and detects price drops.
