@@ -1,0 +1,10 @@
+# Ignore dependencies
+price-tracker-api/node_modules
+price-tracker-web/node_modules
+
+# Environment files
+price-tracker-api/.env
+
+# Build outputs
+price-tracker-web/dist
+price-tracker-api/dist
