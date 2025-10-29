@@ -1,0 +1,22 @@
+{
+  "name": "price-tracker-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.19.2",
+    "node-cron": "^4.2.1",
+    "resend": "^6.2.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
