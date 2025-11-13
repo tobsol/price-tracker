@@ -12,13 +12,13 @@ From endless refreshing to one timely alert — your size, your price, the momen
 - Recheck API to refresh prices on demand
 - Scheduled job every 30 minutes to update prices
 - Data stored in MongoDB
-- Prepared for future email notifications via Resend
+- Sends price-drop email notifications via Resend
 
 ## Tech stack
 Frontend: React, Vite, TypeScript  
 Backend: Node.js, Express, Cheerio  
 Database: MongoDB  
-Email (planned): Resend  
+Email: Resend  
 Scheduling: Cron (30-minute interval)
 
 ## Learning approach
