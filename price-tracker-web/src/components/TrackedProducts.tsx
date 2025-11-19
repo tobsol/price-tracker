@@ -1,92 +1,208 @@
 // src/components/TrackedProducts.tsx
 import { useEffect, useState } from "react";
-import { listProducts, tickNow } from "../api";
-
-export type Tracked = {
-  _id: string;          // <-- Mongo ObjectId
-  url: string;
-  title?: string;
-  currency?: string;
-  lastPrice: number;
-  updatedAt?: string;   // (optional) from Mongoose timestamps
-};
+import { listProducts, tickNow, type Tracked, type TickResponse } from "../api";
 
 export default function TrackedProducts() {
   const [items, setItems] = useState<Tracked[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tickMsg, setTickMsg] = useState<string | null>(null);
+  const [tickLoading, setTickLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tickInfo, setTickInfo] = useState<TickResponse | null>(null);
 
   async function load() {
-    try {
-      setError(null);
-      const data = await listProducts();
-      setItems(data);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load products");
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function handleTick() {
-    setLoading(true);
-    setTickMsg(null);
     setError(null);
     try {
-      const res = await tickNow("manual");
-      setTickMsg(`Checked ${res.checked} items — ${res.drops} price drop(s) detected`);
-      await load(); // refresh list after tick
-    } catch (e: any) {
-      setError(e?.message ?? "Tick failed");
+      setLoading(true);
+      const data = await listProducts();
+      // sort newest first
+      data.sort((a, b) => {
+        const tA = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const tB = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return tB - tA;
+      });
+      setItems(data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message ?? "Failed to load tracked products");
     } finally {
       setLoading(false);
     }
   }
 
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function handleTick() {
+    setError(null);
+    setTickInfo(null);
+    try {
+      setTickLoading(true);
+      const res = await tickNow("manual");
+      setTickInfo(res);
+      await load();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message ?? "Tick failed");
+    } finally {
+      setTickLoading(false);
+    }
+  }
+
   return (
-    <div style={{ marginTop: 24 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div style={{ marginTop: 32 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 12,
+        }}
+      >
         <h2 style={{ margin: 0 }}>Tracked products</h2>
         <button
+          type="button"
           onClick={handleTick}
-          disabled={loading}
+          disabled={tickLoading}
           style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid #333",
-            background: "#333",
-            color: "white",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1,
+            padding: "6px 10px",
+            borderRadius: 999,
+            border: "1px solid #111",
+            background: tickLoading ? "#eee" : "white",
+            cursor: tickLoading ? "wait" : "pointer",
+            fontSize: 13,
           }}
         >
-          {loading ? "Re-checking…" : "Re-check now"}
+          {tickLoading ? "Checking..." : "Re-check now"}
         </button>
       </div>
 
-      {tickMsg && <div style={{ marginTop: 8, color: "#0a7" }}>{tickMsg}</div>}
-      {error && <div style={{ marginTop: 8, color: "#b00020" }}>{error}</div>}
-
-      {items.length === 0 ? (
-        <div style={{ marginTop: 12, opacity: 0.7 }}>
-          No products yet — add one above to start tracking.
+      {tickInfo && (
+        <div
+          style={{
+            marginBottom: 12,
+            fontSize: 13,
+            opacity: 0.8,
+          }}
+        >
+          Checked {tickInfo.checked} products, price drops on {tickInfo.drops},{" "}
+          emails sent: {tickInfo.emailed}.
         </div>
+      )}
+
+      {error && (
+        <div style={{ marginBottom: 12, color: "#b00020" }}>{error}</div>
+      )}
+
+      {loading ? (
+        <div>Loading tracked products...</div>
+      ) : items.length === 0 ? (
+        <div style={{ opacity: 0.8 }}>No products tracked yet.</div>
       ) : (
-        <ul style={{ marginTop: 12, paddingLeft: 16 }}>
-          {items.map((p) => (
-            <li key={p._id || p.url} style={{ marginBottom: 8 }}>
-              <div style={{ fontWeight: 600 }}>{p.title ?? "Product"}</div>
-              <div style={{ opacity: 0.85 }}>
-                Current price: {p.lastPrice} {p.currency ?? ""}
-              </div>
-              <a href={p.url} target="_blank" rel="noreferrer">
-                {p.url}
-              </a>
-            </li>
-          ))}
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr)",
+            gap: 12,
+            maxWidth: 800,
+          }}
+        >
+          {items.map((p) => {
+            const createdDate = p.createdAt
+              ? new Date(p.createdAt).toLocaleString()
+              : null;
+            const lowestDate = p.lowestPriceDate
+              ? new Date(p.lowestPriceDate).toLocaleDateString()
+              : null;
+
+            return (
+              <li
+                key={p._id}
+                style={{
+                  borderRadius: 12,
+                  border: "1px solid #ddd",
+                  padding: 12,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      {p.title ?? "Product"}
+                    </div>
+                    <div style={{ fontSize: 13, opacity: 0.7 }}>
+                      {p.size ? `Size: ${p.size}` : "Size: not set"}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 160 }}>
+                    <div style={{ fontWeight: 600 }}>
+                      {p.lastPrice} {p.currency ?? ""}
+                    </div>
+                    {p.initialPrice != null && (
+                      <div style={{ fontSize: 13, opacity: 0.8 }}>
+                        Initial: {p.initialPrice} {p.currency ?? ""}
+                      </div>
+                    )}
+                    {p.dropFromInitialPercent != null && (
+                      <div style={{ fontSize: 13, opacity: 0.8 }}>
+                        Drop: {p.dropFromInitialPercent}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  {p.lowestPrice != null && (
+                    <span>
+                      Lowest: {p.lowestPrice} {p.currency ?? ""}{" "}
+                      {lowestDate && `on ${lowestDate}`}
+                    </span>
+                  )}
+                </div>
+
+                {(p.targetPrice != null || p.targetDiscountPercent != null) && (
+                  <div style={{ fontSize: 13, opacity: 0.8 }}>
+                    Alerts:&nbsp;
+                    {p.targetPrice != null && (
+                      <span>price ≤ {p.targetPrice}{p.currency ? ` ${p.currency}` : ""}</span>
+                    )}
+                    {p.targetPrice != null && p.targetDiscountPercent != null && (
+                      <span> · </span>
+                    )}
+                    {p.targetDiscountPercent != null && (
+                      <span>discount ≥ {p.targetDiscountPercent}%</span>
+                    )}
+                  </div>
+                )}
+
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ marginTop: 4, fontSize: 13 }}
+                >
+                  {p.url}
+                </a>
+
+                {createdDate && (
+                  <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
+                    Tracking since {createdDate}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -18,24 +18,60 @@ app.use(
 );
 app.use(express.json());
 
+
 // ====== MongoDB Connection ======
+const MONGO_URL =
+  process.env.MONGO_URL || "mongodb://127.0.0.1:27017/price-tracker";
+
 mongoose
-  .connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err.message));
+  .connect(MONGO_URL)
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err.message);
+  });
+
 
 // ====== Mongoose Model ======
 const ProductSchema = new mongoose.Schema(
   {
-    url: { type: String, required: true, unique: true },
+    url: { type: String, required: true }, // removed unique:true so same URL can be tracked for different sizes
     title: String,
     currency: String,
-    lastPrice: Number,
-    priceHistory: [{ price: Number, checkedAt: { type: Date, default: Date.now } }],
+
+    // NEW: size-specific tracking
+    size: String, // e.g. "EU 42"
+
+    // Prices
+    lastPrice: Number,      // latest price
+    initialPrice: Number,   // first seen price
+    lowestPrice: Number,    // lowest ever seen
+    lowestPriceDate: Date,  // when the lowestPrice happened
+
+    // Derived analytics
+    dropFromInitialPercent: Number, // % down from initial price
+
+    // Threshold rules
+    targetPrice: Number,           // notify when price <= this
+    targetDiscountPercent: Number, // notify when % drop >= this
+
+    // To avoid spamming notifications for the same exact price
+    lastNotifiedPrice: Number,
+
+    // History of checks
+    priceHistory: [
+      {
+        price: Number,
+        checkedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
+
 const Product = mongoose.model("Product", ProductSchema);
+
 
 // ====== Helpers ======
 
@@ -195,26 +231,47 @@ app.post("/preview", async (req, res) => {
 // Add product
 app.post("/products", async (req, res) => {
   try {
-    const { url } = req.body || {};
+    const { url, size, targetPrice, targetDiscountPercent } = req.body || {};
     if (!url) return res.status(400).json({ error: "url required" });
 
+    // For now we still treat one product per URL (no duplicates)
     const existing = await Product.findOne({ url });
     if (existing) return res.json(existing);
 
     const info = await scrapePrice(url);
-    const product = await Product.create({
+    const now = new Date();
+
+    const product = new Product({
       url,
       title: info.title,
-      currency: info.currency,
+      currency: info.currency || "NOK",
+
+      size: size || undefined,
+
       lastPrice: info.price,
-      priceHistory: [{ price: info.price }],
+      initialPrice: info.price,
+      lowestPrice: info.price,
+      lowestPriceDate: now,
+      dropFromInitialPercent: 0,
+
+      targetPrice:
+        typeof targetPrice === "number" ? targetPrice : undefined,
+      targetDiscountPercent:
+        typeof targetDiscountPercent === "number"
+          ? targetDiscountPercent
+          : undefined,
+
+      priceHistory: [{ price: info.price, checkedAt: now }],
     });
+
+    await product.save();
     res.json(product);
   } catch (err) {
     console.error("add product error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // List products
 app.get("/products", async (_req, res) => {
@@ -226,15 +283,79 @@ app.get("/products", async (_req, res) => {
   }
 });
 
+// ====== Analytics + notification helpers ======
+
+function updateAnalyticsFields(product, newPrice, now = new Date()) {
+  // If we don't have an initial price yet, use this price as the starting point
+  if (product.initialPrice == null) {
+    product.initialPrice = newPrice;
+  }
+
+  // Lowest price + date
+  if (product.lowestPrice == null || newPrice < product.lowestPrice) {
+    product.lowestPrice = newPrice;
+    product.lowestPriceDate = now;
+  }
+
+  // Percentage drop from initial
+  if (product.initialPrice) {
+    const drop = ((product.initialPrice - newPrice) / product.initialPrice) * 100;
+    // keep it non-negative and rounded to 1 decimal
+    product.dropFromInitialPercent = Math.max(0, Math.round(drop * 10) / 10);
+  } else {
+    product.dropFromInitialPercent = 0;
+  }
+}
+
+function shouldSendNotification(product, oldPrice, newPrice) {
+  const hasTargetPrice = typeof product.targetPrice === "number";
+  const hasTargetDiscount = typeof product.targetDiscountPercent === "number";
+
+  // If no thresholds set, fall back to the old behaviour:
+  // notify on any price drop
+  if (!hasTargetPrice && !hasTargetDiscount) {
+    if (oldPrice == null) return false;
+    if (newPrice >= oldPrice) return false;
+    if (product.lastNotifiedPrice === newPrice) return false;
+    return true;
+  }
+
+  let meetsPrice = false;
+  let meetsDiscount = false;
+
+  if (hasTargetPrice) {
+    meetsPrice = newPrice <= product.targetPrice;
+  }
+
+  if (hasTargetDiscount && product.initialPrice) {
+    const drop =
+      ((product.initialPrice - newPrice) / product.initialPrice) * 100;
+    meetsDiscount = drop >= product.targetDiscountPercent;
+  }
+
+  // If neither condition is met, no notification
+  if (!(meetsPrice || meetsDiscount)) return false;
+
+  // Avoid sending again for exactly the same price
+  if (product.lastNotifiedPrice === newPrice) return false;
+
+  return true;
+}
+
+
 // Manual tick (protected)
 app.post("/admin/tick", async (req, res) => {
   const auth = req.get("Authorization");
-  const token = process.env.ADMIN_TOKEN || process.env.TICK_TOKEN || "dev-secret-token";
-  if (!auth || auth !== `Bearer ${token}`) return res.status(401).json({ error: "Unauthorized" });
+  const token =
+    process.env.ADMIN_TOKEN || process.env.TICK_TOKEN || "dev-secret-token";
+  if (!auth || auth !== `Bearer ${token}`)
+    return res.status(401).json({ error: "Unauthorized" });
 
   try {
     const products = await Product.find();
-    let checked = 0, drops = 0, emailed = 0;
+    let checked = 0,
+      drops = 0,
+      emailed = 0;
 
     for (const p of products) {
       try {
@@ -243,24 +364,50 @@ app.post("/admin/tick", async (req, res) => {
 
         const oldPrice = p.lastPrice;
         const newPrice = info.price;
+        const now = new Date();
 
+        // Basic fields
         p.title = info.title || p.title;
         p.currency = info.currency || p.currency || "NOK";
-        p.priceHistory.push({ price: newPrice });
-        p.lastPrice = newPrice;
-        await p.save();
 
-        if (oldPrice != null && newPrice < oldPrice) {
-          drops++; emailed++;
+        // History
+        p.priceHistory.push({ price: newPrice, checkedAt: now });
+
+        // Analytics
+        updateAnalyticsFields(p, newPrice, now);
+
+        // Last price
+        p.lastPrice = newPrice;
+
+        // Decide whether to send notification
+        const notify = shouldSendNotification(p, oldPrice, newPrice);
+
+        if (notify) {
+          drops++;
+          emailed++;
+
           await sendEmail({
-            subject: `💸 Price drop: ${p.title} → ${newPrice} ${p.currency}`,
-            html: `<h2>Price drop detected</h2>
+            subject: `💸 Price alert: ${p.title} → ${newPrice} ${p.currency}`,
+            html: `<h2>Price alert</h2>
                    <p><strong>${p.title}</strong></p>
-                   <p>Old: ${oldPrice} ${p.currency}<br>New: ${newPrice} ${p.currency}</p>
+                   <p>Current: ${newPrice} ${p.currency}</p>
+                   ${
+                     p.initialPrice
+                       ? `<p>Initial: ${p.initialPrice} ${p.currency} (${p.dropFromInitialPercent}% down)</p>`
+                       : ""
+                   }
                    <p><a href="${p.url}">View product</a></p>`,
-            text: `${p.title}\nOld: ${oldPrice} ${p.currency}\nNew: ${newPrice} ${p.currency}\n${p.url}`,
+            text: `${p.title}
+Current: ${newPrice} ${p.currency}
+Initial: ${p.initialPrice ?? "n/a"} ${p.currency}
+Drop: ${p.dropFromInitialPercent ?? 0}% 
+${p.url}`,
           });
+
+          p.lastNotifiedPrice = newPrice;
         }
+
+        await p.save();
       } catch (e) {
         console.warn("check failed:", p.url, e.message || e);
       }
@@ -280,6 +427,7 @@ app.post("/admin/tick", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // Test email
 app.post("/admin/test-email", async (_req, res) => {
