@@ -69,7 +69,7 @@ Online retailers constantly tweak prices, then shout “–20%” compared to a 
 
 This project is designed around a different question:
 
-> “Is this price better than when *I* started caring about this product?”
+> "Is this price better than when I started caring about this product?"
 
 Key design choices:
 
