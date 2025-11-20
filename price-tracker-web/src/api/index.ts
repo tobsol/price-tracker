@@ -48,6 +48,7 @@ export type Tracked = {
   lowestPrice?: number;
   lowestPriceDate?: string;
   dropFromInitialPercent?: number;
+  changeFromInitialPercent?: number; // signed +/-
 
   targetPrice?: number;
   targetDiscountPercent?: number;

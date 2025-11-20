@@ -1,6 +1,7 @@
 // src/components/TrackedProducts.tsx
 import { useEffect, useState } from "react";
 import { listProducts, tickNow, type Tracked, type TickResponse } from "../api";
+import PriceHistoryChart from "./PriceHistoryChart";
 
 export default function TrackedProducts() {
   const [items, setItems] = useState<Tracked[]>([]);
@@ -145,20 +146,44 @@ export default function TrackedProducts() {
                       {p.size ? `Size: ${p.size}` : "Size: not set"}
                     </div>
                   </div>
-                  <div style={{ textAlign: "right", minWidth: 160 }}>
+
+                  {/* Updated price / analytics block */}
+                  <div style={{ textAlign: "right", minWidth: 180 }}>
                     <div style={{ fontWeight: 600 }}>
                       {p.lastPrice} {p.currency ?? ""}
                     </div>
+
                     {p.initialPrice != null && (
                       <div style={{ fontSize: 13, opacity: 0.8 }}>
                         Initial: {p.initialPrice} {p.currency ?? ""}
                       </div>
                     )}
-                    {p.dropFromInitialPercent != null && (
+
+                    {p.changeFromInitialPercent != null && (
                       <div style={{ fontSize: 13, opacity: 0.8 }}>
-                        Drop: {p.dropFromInitialPercent}%
+                        Change:&nbsp;
+                        <span
+                          style={{
+                            color:
+                              p.changeFromInitialPercent > 0
+                                ? "#b00020" // more expensive = red
+                                : p.changeFromInitialPercent < 0
+                                ? "#0b8b34" // cheaper = green
+                                : "#555",
+                          }}
+                        >
+                          {p.changeFromInitialPercent > 0 ? "+" : ""}
+                          {p.changeFromInitialPercent}%
+                        </span>
                       </div>
                     )}
+
+                    {p.dropFromInitialPercent != null &&
+                      p.dropFromInitialPercent > 0 && (
+                        <div style={{ fontSize: 13, opacity: 0.8 }}>
+                          Discount vs initial: {p.dropFromInitialPercent}%
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -171,17 +196,22 @@ export default function TrackedProducts() {
                   )}
                 </div>
 
-                {(p.targetPrice != null || p.targetDiscountPercent != null) && (
+                {(p.targetPrice != null ||
+                  p.targetDiscountPercent != null) && (
                   <div style={{ fontSize: 13, opacity: 0.8 }}>
                     Alerts:&nbsp;
                     {p.targetPrice != null && (
-                      <span>price ≤ {p.targetPrice}{p.currency ? ` ${p.currency}` : ""}</span>
+                      <span>
+                        price ≤ {p.targetPrice}
+                        {p.currency ? ` ${p.currency}` : ""}
+                      </span>
                     )}
-                    {p.targetPrice != null && p.targetDiscountPercent != null && (
-                      <span> · </span>
-                    )}
+                    {p.targetPrice != null &&
+                      p.targetDiscountPercent != null && <span> · </span>}
                     {p.targetDiscountPercent != null && (
-                      <span>discount ≥ {p.targetDiscountPercent}%</span>
+                      <span>
+                        discount ≥ {p.targetDiscountPercent}%
+                      </span>
                     )}
                   </div>
                 )}
@@ -194,6 +224,13 @@ export default function TrackedProducts() {
                 >
                   {p.url}
                 </a>
+
+                {p.priceHistory && p.priceHistory.length > 0 && (
+                  <PriceHistoryChart
+                    history={p.priceHistory}
+                    currency={p.currency}
+                  />
+                )}
 
                 {createdDate && (
                   <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>

@@ -50,7 +50,10 @@ const ProductSchema = new mongoose.Schema(
     lowestPriceDate: Date,  // when the lowestPrice happened
 
     // Derived analytics
-    dropFromInitialPercent: Number, // % down from initial price
+        // Derived analytics
+    dropFromInitialPercent: Number,   // % down from initial price (never negative)
+    changeFromInitialPercent: Number, // signed % change vs initial (can be + or -)
+
 
     // Threshold rules
     targetPrice: Number,           // notify when price <= this
@@ -241,7 +244,7 @@ app.post("/products", async (req, res) => {
     const info = await scrapePrice(url);
     const now = new Date();
 
-    const product = new Product({
+        const product = new Product({
       url,
       title: info.title,
       currency: info.currency || "NOK",
@@ -253,6 +256,8 @@ app.post("/products", async (req, res) => {
       lowestPrice: info.price,
       lowestPriceDate: now,
       dropFromInitialPercent: 0,
+      changeFromInitialPercent: 0,
+
 
       targetPrice:
         typeof targetPrice === "number" ? targetPrice : undefined,
@@ -297,15 +302,23 @@ function updateAnalyticsFields(product, newPrice, now = new Date()) {
     product.lowestPriceDate = now;
   }
 
-  // Percentage drop from initial
+    // Percentage change from initial
   if (product.initialPrice) {
-    const drop = ((product.initialPrice - newPrice) / product.initialPrice) * 100;
-    // keep it non-negative and rounded to 1 decimal
-    product.dropFromInitialPercent = Math.max(0, Math.round(drop * 10) / 10);
+    // signed change vs initial: positive = more expensive, negative = cheaper
+    const change =
+      ((newPrice - product.initialPrice) / product.initialPrice) * 100;
+    product.changeFromInitialPercent = Math.round(change * 10) / 10; // 1 decimal
+
+    // discount is just the positive part of -change
+    const drop = -change;
+    product.dropFromInitialPercent =
+      drop > 0 ? Math.round(drop * 10) / 10 : 0;
   } else {
+    product.changeFromInitialPercent = 0;
     product.dropFromInitialPercent = 0;
   }
 }
+
 
 function shouldSendNotification(product, oldPrice, newPrice) {
   const hasTargetPrice = typeof product.targetPrice === "number";
