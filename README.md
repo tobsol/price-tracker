@@ -129,4 +129,4 @@ I learn by building real things. I used ChatGPT to scaffold the initial setup so
 
 ## Status
 
-Active development. See the Roadmap for next steps.
+Active development. See the Roadmap for next steps. 
