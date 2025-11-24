@@ -259,6 +259,9 @@ function buildPriceAlertEmail(product) {
     targetDiscountPercent,
   } = product;
 
+  // Collapse all whitespace (including newlines) into single spaces for subject/text
+  const safeTitle = (title || "Product").replace(/\s+/g, " ").trim();
+
   const formattedLowestDate = lowestPriceDate
     ? new Date(lowestPriceDate).toLocaleDateString("nb-NO")
     : null;
@@ -271,7 +274,7 @@ function buildPriceAlertEmail(product) {
     rules.push(`Discount vs initial ≥ ${targetDiscountPercent}%`);
   }
 
-  const subject = `💸 Price alert: ${title} now ${lastPrice} ${currency}`;
+  const subject = `💸 Price alert: ${safeTitle} now ${lastPrice} ${currency}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -342,7 +345,7 @@ function buildPriceAlertEmail(product) {
 </html>`;
 
   const textLines = [
-    `Price alert: ${title}`,
+    `Price alert: ${safeTitle}`,
     "",
     `Current price: ${lastPrice} ${currency}`,
     `Initial price: ${initialPrice ?? "n/a"} ${currency}`,
