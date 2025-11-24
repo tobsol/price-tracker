@@ -1,4 +1,4 @@
-# 🏃‍♂️ Running Shoe Price Tracker
+# 👟 Running Shoe Price Tracker
 
 Full-stack project with React + TypeScript (Vite) and Node.js + Express.  
 It tracks prices of running shoes (tested with loepeshop.no), detects **real** discounts, and can send email alerts when prices drop.
@@ -7,9 +7,9 @@ It tracks prices of running shoes (tested with loepeshop.no), detects **real** d
 
 ## Value proposition
 
-From endless refreshing to one timely alert — **your size, your price, your starting point.**
+From endless refreshing to one timely alert — **your size, your price, the moment it drops.**
 
-Most “-20%” banners compare against a short-lived, inflated high price.  
+Most “–20%” banners compare against a short-lived, inflated high price.  
 This tracker compares everything against the price **when you started caring**, so you don’t get tricked by fake discounts.
 
 ---
@@ -39,53 +39,90 @@ This tracker compares everything against the price **when you started caring**, 
 - **Price history chart per product**  
   Every check is stored in `priceHistory`. The frontend renders a small line chart to show how the price has moved over time (not just the current value).
 
-- **Alert rules**
-  - Optional **target price** (e.g. `≤ 2800 NOK`)
-  - Optional **target discount %** (e.g. `≥ 10%`)
-  - The backend only sends an email when one of these rules is met and the price hasn’t already been notified at that level.
+- **Per-product alert rules (backend)**  
+  Each tracked product can have its own alert configuration:
+  - **Target price** – alert when the current price is **less than or equal to** this value (e.g. `≤ 2800 NOK`).
+  - **Target discount** – alert when the price is at least **X% cheaper** than the `initialPrice` (e.g. `≥ 20%` discount).
+  - If **no rules** are set for a product, the tracker falls back to:  
+    **“Alert on any real price drop”** compared to the previous check (but never twice for the exact same price).
+
+  The alert logic is **OR-based**:
+  - If *either* the target price rule **or** the target discount rule is satisfied, an alert is eligible.
+  - Alerts are de-duplicated using `lastNotifiedPrice`, so the same price point does not spam your inbox.
+
+- **Email notifications (Resend)**  
+  When an alert rule is met, the backend sends an email via Resend (configured via `.env`).  
+  Each alert email includes:
+  - Current price and currency  
+  - Initial price  
+  - Discount vs initial (in %)  
+  - Lowest price seen so far and when it occurred  
+  - The alert rule(s) that were met (e.g. *“Price ≤ 2800 NOK”*, *“Discount vs initial ≥ 10%”*)  
+  - Direct link to the product page  
+
+  Subjects are sanitized (no newlines, normalized whitespace) so they comply with Resend’s validation rules.
+
+> **Planned:** In a later iteration, the frontend will expose full UI controls for editing alert rules (target price / discount) per product. For now, configuration lives in the backend / database.
+
+---
 
 ### Automation & storage
 
 - **Manual re-check**  
-  A “Re-check now” button calls a protected `/admin/tick` endpoint to scrape all tracked products on demand.
+  A “Re-check now” button calls a protected `/admin/tick` endpoint to scrape all tracked products on demand and show how many prices changed, how many alerts were triggered, and how many emails were sent.
 
 - **Scheduled job every 30 minutes**  
-  Cron job triggers the same tick endpoint on a schedule to keep prices fresh.
+  A cron job triggers the same tick endpoint on a schedule to keep prices fresh without manual interaction.
 
 - **MongoDB Atlas storage**  
-  Products, history and analytics (initial price, lowest price, change %, etc.) are stored in Atlas.
+  Products, history and analytics (initial price, lowest price, change %, rules, etc.) are stored in MongoDB Atlas.
 
-- **Email notifications via Resend**  
-  When a threshold is crossed, the backend can send an email using Resend’s API (configurable via `.env`).
+- **Email infrastructure via Resend**  
+  All emails are sent through Resend’s REST API. Credentials and recipient addresses are injected via environment variables to keep secrets out of Git.
 
 ---
 
-## Why this exists (design thinking)
+## How alert logic works (and why it’s designed this way)
 
-Online retailers constantly tweak prices, then shout “–20%” compared to a short-lived peak. Traditional trackers and sale banners often compare against that inflated high, which creates **false positives**:
+Traditional trackers often answer:
 
-- A product is “on sale”, but still **more expensive** than when you first saw it.
-- As a user, you make a bad decision because the reference point is wrong.
+> “Is this price lower than some recent peak?”
 
-This project is designed around a different question:
+This project answers a more personal question:
 
-> "Is this price better than when I started caring about this product?"
+> “Is this price better than when **I** started caring about this product?”
 
-Key design choices:
+To support that, the alert system is built around:
 
-- **Personal baseline**  
-  The first time you track a product, its price is stored as `initialPrice`. This is your truth, not the shop’s.
+1. **Personal baseline**  
+   - `initialPrice` is captured when you first start tracking.  
+   - All discounts and % changes are measured relative to that number, not the retailer’s latest “original” price.
 
-- **Signed change vs initial**  
-  Instead of just “10% difference”, the app shows `+10%` (worse) or `-10%` (better). The sign is preserved.
+2. **Two mental models of a good deal**
+   - **Absolute price**:  
+     “If this shoe hits **2 500 NOK or less**, I’m willing to buy.”
+   - **Relative discount**:  
+     “If it’s at least **20% off** the original price I saw, that feels like a real sale.”
 
-- **Real discount only**  
-  `dropFromInitialPercent` is derived from that signed change and clamped at 0. The app never calls a price increase a “discount”.
+   In behavioural economics terms:
+   - The absolute price reflects your **willingness to pay** / budget constraint.
+   - The discount reflects your sense of **value vs the original anchor**.
 
-- **Transparent history**  
-  The line chart and “lowest price since tracking” date let you see if a current “deal” is actually worse than a previous low.
+3. **OR logic instead of over-optimisation**  
+   - The tracker sends an alert if **any one** of your conditions is met:
+     - price ≤ target price **OR**  
+     - discount ≥ target discount %
+   - This matches how many people behave in practice:
+     - They do not try to perfectly optimise the lowest possible price.
+     - They “satisfice”: once the deal is **good enough** either in absolute terms or relative discount, they want to know and act before the price changes again.
 
-Together, this helps avoid **fake discounts** based on temporary price spikes and supports more honest decision-making.
+4. **Avoiding regret and spam**
+   - By de-duplicating on `lastNotifiedPrice`, the app avoids sending multiple alerts for the same price point.
+   - By using your personal baseline and explicit rules, it reduces the chance of:
+     - “Fake discounts” that are still worse than your starting point.
+     - “I waited to save another 50 NOK and missed a perfectly good deal” regret.
+
+Together, this makes the tracker more aligned with how real buyers think about deals, not just how retailers design their banners.
 
 ---
 
@@ -102,6 +139,7 @@ Together, this helps avoid **fake discounts** based on temporary price spikes an
 - Node.js, Express
 - Cheerio (HTML scraping)
 - Cron (30-minute scheduled checks)
+- Custom alert logic + email templating
 
 **Infrastructure**
 
@@ -118,15 +156,17 @@ I learn by building real things. I used ChatGPT to scaffold the initial setup so
 
 ## Roadmap
 
-- Polish email templates and open up price-drop alerts
+- Expose **alert rule editing** (target price / discount) directly in the UI
+- Iterate on email templates and summaries (e.g. weekly “what changed” digest)
 - Add more analytics (e.g. “best discount seen so far”, rolling averages)
 - Multi-product and multi-retailer support
 - Weekly summaries (what changed this week?)
-- Subscription / freemium model experiments
+- Subscription / freemium model experiments (e.g. premium alert tiers)
 - Refined UI and public demo
 
 ---
 
 ## Status
 
-Active development. See the Roadmap for next steps. 
+Active development. See the Roadmap for next steps.  
+The alert logic and email delivery via Resend are already live and used for real products.
