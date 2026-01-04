@@ -1,0 +1,16 @@
+name: Price tracker tick
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call tick endpoint
+        run: |
+          curl -sS -X POST "${{ secrets.TICK_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.ADMIN_TOKEN }}" \
+            --fail
