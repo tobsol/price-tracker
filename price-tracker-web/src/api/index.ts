@@ -1,33 +1,5 @@
 // src/api/index.ts
-
-// ---- Base URL + token (with normalization) ----
-function normalizeBase(base?: string) {
-  const b = (base || "").trim();
-  if (!b) return "http://localhost:3001";
-  // must start with http/https
-  if (!/^https?:\/\//i.test(b)) return "http://localhost:3001";
-  // strip trailing slashes
-  return b.replace(/\/+$/, "");
-}
-
-const API_BASE = normalizeBase(import.meta.env.VITE_API_URL as string | undefined);
-const ADMIN_TOKEN = (import.meta.env.VITE_ADMIN_TOKEN as string | undefined) || "";
-
-// Helpful warnings if envs are missing (dev only)
-if (import.meta.env.DEV) {
-  if (!import.meta.env.VITE_API_URL) {
-    console.warn(
-      "[api] VITE_API_URL not set, falling back to http://localhost:3001"
-    );
-  }
-  if (!ADMIN_TOKEN) {
-    console.warn(
-      "[api] VITE_ADMIN_TOKEN not set; tickNow() without token may fail"
-    );
-  }
-}
-
-console.debug("[api] API_BASE =", API_BASE);
+import { API_BASE_URL, ADMIN_TOKEN } from "../config";
 
 // ----- Types that match the Mongo-backed API -----
 
@@ -48,7 +20,7 @@ export type Tracked = {
   lowestPrice?: number;
   lowestPriceDate?: string;
   dropFromInitialPercent?: number;
-  changeFromInitialPercent?: number; // signed +/-
+  changeFromInitialPercent?: number; // signed +/- (can be negative)
 
   targetPrice?: number;
   targetDiscountPercent?: number;
@@ -86,9 +58,9 @@ export type AddProductPayload = {
 
 // ----- API helpers -----
 
-// preview a product without saving it
+// Preview a product without saving it
 export async function previewProduct(url: string) {
-  const res = await fetch(`${API_BASE}/preview`, {
+  const res = await fetch(`${API_BASE_URL}/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
@@ -102,9 +74,9 @@ export async function previewProduct(url: string) {
   return (await res.json()) as PreviewResponse;
 }
 
-// add a product to track (Mongo persistence)
+// Add a product to track (Mongo persistence)
 export async function addProduct(payload: AddProductPayload) {
-  const res = await fetch(`${API_BASE}/products`, {
+  const res = await fetch(`${API_BASE_URL}/products`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -112,27 +84,33 @@ export async function addProduct(payload: AddProductPayload) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Add product failed: ${res.status} ${text || res.statusText}`);
+    throw new Error(
+      `Add product failed: ${res.status} ${text || res.statusText}`
+    );
   }
 
   return (await res.json()) as Tracked;
 }
 
-// list tracked products
+// List tracked products
 export async function listProducts() {
-  const res = await fetch(`${API_BASE}/products`);
+  const res = await fetch(`${API_BASE_URL}/products`);
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`List products failed: ${res.status} ${text || res.statusText}`);
+    throw new Error(
+      `List products failed: ${res.status} ${text || res.statusText}`
+    );
   }
+
   return (await res.json()) as Tracked[];
 }
 
-// manually re-check all products (Authorization + tiny JSON body)
+// Manually re-check all products (Authorization + small JSON body)
 export async function tickNow(reason: string = "manual", token?: string) {
   const auth = token ?? ADMIN_TOKEN;
 
-  const res = await fetch(`${API_BASE}/admin/tick`, {
+  const res = await fetch(`${API_BASE_URL}/admin/tick`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
