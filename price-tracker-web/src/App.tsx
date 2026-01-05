@@ -6,6 +6,9 @@ function App() {
   // Forces TrackedProducts to refetch after a successful "add product" action.
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Public Render build will NOT have this; your local dev will (via .env.local).
+  const isAdmin = Boolean((import.meta.env.VITE_ADMIN_TOKEN as string | undefined)?.trim());
+
   const styles: Record<string, React.CSSProperties> = {
     page: {
       minHeight: "100vh",
@@ -115,6 +118,15 @@ function App() {
       opacity: 0.75,
       fontSize: "0.95rem",
     },
+    readOnlyBanner: {
+      marginTop: 10,
+      border: "1px solid rgba(0,0,0,0.10)",
+      background: "rgba(0,0,0,0.03)",
+      borderRadius: 12,
+      padding: "10px 12px",
+      opacity: 0.95,
+      lineHeight: 1.5,
+    },
   };
 
   return (
@@ -138,6 +150,15 @@ function App() {
               automatically in the background. When your condition is met,
               you’ll get an email — no manual checking, no noise.
             </p>
+
+            {!isAdmin && (
+              <div style={styles.readOnlyBanner}>
+                <strong>Public demo is read-only.</strong> Product adds and
+                previews are disabled on this hosted version to protect the
+                database. For a full walkthrough, I can demo the admin flow
+                locally.
+              </div>
+            )}
           </header>
 
           <div style={styles.divider} />
@@ -149,8 +170,7 @@ function App() {
               style={{
                 ...styles.grid,
                 // Responsive fallback without CSS media queries:
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(220px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               }}
             >
               <div style={styles.gridItem}>
@@ -187,11 +207,21 @@ function App() {
 
           <div style={styles.contentBlock}>
             <div style={styles.sectionTitle}>Add a product</div>
-            <AddProductForm onTracked={() => setReloadKey((k) => k + 1)} />
-            <div style={styles.smallNote}>
-              Tip: After you add a product, checks run automatically on a
-              schedule. You’ll receive an email when your alert triggers.
-            </div>
+
+            {isAdmin ? (
+              <>
+                <AddProductForm onTracked={() => setReloadKey((k) => k + 1)} />
+                <div style={styles.smallNote}>
+                  Tip: After you add a product, checks run automatically on a
+                  schedule. You’ll receive an email when your alert triggers.
+                </div>
+              </>
+            ) : (
+              <div style={styles.smallNote}>
+                Adding products is disabled in the hosted demo. Run locally with{" "}
+                <code>VITE_ADMIN_TOKEN</code> to enable admin actions.
+              </div>
+            )}
           </div>
 
           <div style={styles.contentBlock}>

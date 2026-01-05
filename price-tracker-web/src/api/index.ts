@@ -46,13 +46,34 @@ export type AddProductPayload = {
   targetDiscountPercent?: number;
 };
 
+// ----- Admin token helper (LOCAL ONLY) -----
+
+const ADMIN_TOKEN = (import.meta.env.VITE_ADMIN_TOKEN as string | undefined)?.trim();
+
+function adminHeaders() {
+  return ADMIN_TOKEN ? { "x-admin-token": ADMIN_TOKEN } : {};
+}
+
+function assertAdminToken(action: string) {
+  if (!ADMIN_TOKEN) {
+    throw new Error(
+      `${action} is disabled in the public demo. Set VITE_ADMIN_TOKEN in price-tracker-web/.env.local to enable admin actions locally.`
+    );
+  }
+}
+
 // ----- API helpers -----
 
-// Preview a product without saving it
+// Preview a product without saving it (ADMIN ONLY)
 export async function previewProduct(url: string) {
+  assertAdminToken("Preview");
+
   const res = await fetch(`${API_BASE_URL}/preview`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...adminHeaders(),
+    },
     body: JSON.stringify({ url }),
   });
 
@@ -64,11 +85,16 @@ export async function previewProduct(url: string) {
   return (await res.json()) as PreviewResponse;
 }
 
-// Add a product to track (Mongo persistence)
+// Add a product to track (Mongo persistence) (ADMIN ONLY)
 export async function addProduct(payload: AddProductPayload) {
+  assertAdminToken("Add product");
+
   const res = await fetch(`${API_BASE_URL}/products`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...adminHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
@@ -82,7 +108,7 @@ export async function addProduct(payload: AddProductPayload) {
   return (await res.json()) as Tracked;
 }
 
-// List tracked products
+// List tracked products (PUBLIC)
 export async function listProducts() {
   const res = await fetch(`${API_BASE_URL}/products`);
 
