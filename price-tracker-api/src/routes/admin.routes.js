@@ -1,12 +1,15 @@
 const express = require("express");
 const router = express.Router();
 
-const { adminAuth } = require("../middleware/adminAuth");
+const { requireAdmin } = require("../middleware/requireAdmin");
 const { runTick } = require("../services/tick.service");
 const { sendEmail } = require("../services/email.service");
 
-// Manual tick (protected)
-router.post("/tick", adminAuth, async (req, res) => {
+// Protect all admin routes with ADMIN_TOKEN (x-admin-token header)
+router.use(requireAdmin);
+
+// Manual tick (ADMIN ONLY)
+router.post("/tick", async (req, res) => {
   try {
     const result = await runTick(req.body?.reason || "manual");
     res.json(result);
@@ -16,8 +19,8 @@ router.post("/tick", adminAuth, async (req, res) => {
   }
 });
 
-// Test email (protected)
-router.post("/test-email", adminAuth, async (_req, res) => {
+// Test email (ADMIN ONLY)
+router.post("/test-email", async (_req, res) => {
   try {
     const sent = await sendEmail({
       subject: "✅ Test Email from Price Tracker",
@@ -27,6 +30,7 @@ router.post("/test-email", adminAuth, async (_req, res) => {
 
     res.json({ ok: sent, message: sent ? "Test email sent" : "Email failed" });
   } catch (err) {
+    console.error("test-email error:", err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -1,11 +1,13 @@
 const express = require("express");
 const router = express.Router();
 
+const { requireAdmin } = require("../middleware/requireAdmin");
+
 const Product = require("../models/Product");
 const { scrapePrice } = require("../services/scrape.service");
 
-// Add product
-router.post("/", async (req, res) => {
+// Add product (ADMIN ONLY)
+router.post("/", requireAdmin, async (req, res) => {
   try {
     const { url, size, targetPrice, targetDiscountPercent } = req.body || {};
     if (!url) return res.status(400).json({ error: "url required" });
@@ -31,8 +33,7 @@ router.post("/", async (req, res) => {
       dropFromInitialPercent: 0,
       changeFromInitialPercent: 0,
 
-      targetPrice:
-        typeof targetPrice === "number" ? targetPrice : undefined,
+      targetPrice: typeof targetPrice === "number" ? targetPrice : undefined,
       targetDiscountPercent:
         typeof targetDiscountPercent === "number"
           ? targetDiscountPercent
@@ -49,7 +50,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// List products
+// List products (PUBLIC)
 router.get("/", async (_req, res) => {
   try {
     const products = await Product.find().sort({ updatedAt: -1 });
@@ -59,8 +60,8 @@ router.get("/", async (_req, res) => {
   }
 });
 
-// Update size / thresholds
-router.patch("/:id", async (req, res) => {
+// Update size / thresholds (ADMIN ONLY)
+router.patch("/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { size, targetPrice, targetDiscountPercent } = req.body || {};
