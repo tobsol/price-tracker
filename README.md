@@ -11,7 +11,9 @@ Live frontend: https://price-tracker-web.onrender.com
 ## Demo
 
 ![Running Shoe Price Tracker demo](assets/demo.gif)
+
 *Screenshots from loepeshop.no used for demo purposes.*
+
 
 ---
 
