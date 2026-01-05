@@ -28,7 +28,7 @@ export type Tracked = {
 
   priceHistory?: PriceHistoryPoint[];
 
-  updatedAt?: string; // from Mongoose timestamps
+  updatedAt?: string;
   createdAt?: string;
 };
 
@@ -48,31 +48,27 @@ export type AddProductPayload = {
 
 // ----- Admin token helper (LOCAL ONLY) -----
 
-const ADMIN_TOKEN = (import.meta.env.VITE_ADMIN_TOKEN as string | undefined)?.trim();
-
-function adminHeaders() {
-  return ADMIN_TOKEN ? { "x-admin-token": ADMIN_TOKEN } : {};
-}
-
-function assertAdminToken(action: string) {
-  if (!ADMIN_TOKEN) {
+function getAdminTokenOrThrow(action: string): string {
+  const token = (import.meta.env.VITE_ADMIN_TOKEN as string | undefined)?.trim();
+  if (!token) {
     throw new Error(
-      `${action} is disabled in the public demo. Set VITE_ADMIN_TOKEN in price-tracker-web/.env.local to enable admin actions locally.`
+      `${action} is disabled in the hosted demo. Set VITE_ADMIN_TOKEN in price-tracker-web/.env.local to enable admin actions locally.`
     );
   }
+  return token;
 }
 
 // ----- API helpers -----
 
 // Preview a product without saving it (ADMIN ONLY)
 export async function previewProduct(url: string) {
-  assertAdminToken("Preview");
+  const token = getAdminTokenOrThrow("Preview");
 
   const res = await fetch(`${API_BASE_URL}/preview`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...adminHeaders(),
+      "x-admin-token": token,
     },
     body: JSON.stringify({ url }),
   });
@@ -85,15 +81,15 @@ export async function previewProduct(url: string) {
   return (await res.json()) as PreviewResponse;
 }
 
-// Add a product to track (Mongo persistence) (ADMIN ONLY)
+// Add a product to track (ADMIN ONLY)
 export async function addProduct(payload: AddProductPayload) {
-  assertAdminToken("Add product");
+  const token = getAdminTokenOrThrow("Add product");
 
   const res = await fetch(`${API_BASE_URL}/products`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...adminHeaders(),
+      "x-admin-token": token,
     },
     body: JSON.stringify(payload),
   });
