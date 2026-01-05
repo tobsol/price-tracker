@@ -8,6 +8,14 @@ Live frontend: https://price-tracker-web.onrender.com
 
 ---
 
+## Demo
+
+![Running Shoe Price Tracker demo](assets/demo.gif)
+
+*Screenshots from loepeshop.no used for demo purposes.*
+
+---
+
 ## The problem it solves
 
 Buying running shoes at a good price is surprisingly time-consuming:
@@ -83,6 +91,14 @@ No manual refreshing. No repeated “check now” clicks. Just timely alerts.
 - MongoDB Atlas
 - Resend (email delivery)
 - Deployed on Render (static frontend + API service)
+
+---
+
+## MVP limitation: single-recipient alerts
+
+This MVP is currently configured to send alert emails to a single recipient (me) via environment configuration.
+
+A future iteration can support multiple users by adding authentication (e.g., magic link login), so each user can manage their own tracked products and receive alerts to their own email address.
 
 ---
 
