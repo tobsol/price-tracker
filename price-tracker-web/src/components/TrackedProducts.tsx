@@ -1,30 +1,32 @@
 // src/components/TrackedProducts.tsx
 import { useEffect, useState } from "react";
-import { listProducts, tickNow, type Tracked, type TickResponse } from "../api";
+import { listProducts, type Tracked } from "../api";
 import PriceHistoryChart from "./PriceHistoryChart";
 
 export default function TrackedProducts() {
   const [items, setItems] = useState<Tracked[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tickLoading, setTickLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tickInfo, setTickInfo] = useState<TickResponse | null>(null);
 
   async function load() {
     setError(null);
+
     try {
       setLoading(true);
+
       const data = await listProducts();
-      // sort newest first
+
+      // Sort newest first (helps keep the most recently tracked items visible).
       data.sort((a, b) => {
         const tA = a.createdAt ? Date.parse(a.createdAt) : 0;
         const tB = b.createdAt ? Date.parse(b.createdAt) : 0;
         return tB - tA;
       });
+
       setItems(data);
     } catch (err: any) {
       console.error(err);
-      setError(err.message ?? "Failed to load tracked products");
+      setError(err?.message ?? "Failed to load tracked products");
     } finally {
       setLoading(false);
     }
@@ -33,22 +35,6 @@ export default function TrackedProducts() {
   useEffect(() => {
     void load();
   }, []);
-
-  async function handleTick() {
-    setError(null);
-    setTickInfo(null);
-    try {
-      setTickLoading(true);
-      const res = await tickNow("manual");
-      setTickInfo(res);
-      await load();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message ?? "Tick failed");
-    } finally {
-      setTickLoading(false);
-    }
-  }
 
   return (
     <div style={{ marginTop: 32 }}>
@@ -61,35 +47,7 @@ export default function TrackedProducts() {
         }}
       >
         <h2 style={{ margin: 0 }}>Tracked products</h2>
-        <button
-          type="button"
-          onClick={handleTick}
-          disabled={tickLoading}
-          style={{
-            padding: "6px 10px",
-            borderRadius: 999,
-            border: "1px solid #111",
-            background: tickLoading ? "#eee" : "white",
-            cursor: tickLoading ? "wait" : "pointer",
-            fontSize: 13,
-          }}
-        >
-          {tickLoading ? "Checking..." : "Re-check now"}
-        </button>
       </div>
-
-      {tickInfo && (
-        <div
-          style={{
-            marginBottom: 12,
-            fontSize: 13,
-            opacity: 0.8,
-          }}
-        >
-          Checked {tickInfo.checked} products, price drops on {tickInfo.drops},{" "}
-          emails sent: {tickInfo.emailed}.
-        </div>
-      )}
 
       {error && (
         <div style={{ marginBottom: 12, color: "#b00020" }}>{error}</div>
@@ -115,6 +73,7 @@ export default function TrackedProducts() {
             const createdDate = p.createdAt
               ? new Date(p.createdAt).toLocaleString()
               : null;
+
             const lowestDate = p.lowestPriceDate
               ? new Date(p.lowestPriceDate).toLocaleDateString()
               : null;
@@ -147,7 +106,7 @@ export default function TrackedProducts() {
                     </div>
                   </div>
 
-                  {/* Updated price / analytics block */}
+                  {/* Current price / analytics */}
                   <div style={{ textAlign: "right", minWidth: 180 }}>
                     <div style={{ fontWeight: 600 }}>
                       {p.lastPrice} {p.currency ?? ""}
@@ -196,8 +155,7 @@ export default function TrackedProducts() {
                   )}
                 </div>
 
-                {(p.targetPrice != null ||
-                  p.targetDiscountPercent != null) && (
+                {(p.targetPrice != null || p.targetDiscountPercent != null) && (
                   <div style={{ fontSize: 13, opacity: 0.8 }}>
                     Alerts:&nbsp;
                     {p.targetPrice != null && (
@@ -209,9 +167,7 @@ export default function TrackedProducts() {
                     {p.targetPrice != null &&
                       p.targetDiscountPercent != null && <span> · </span>}
                     {p.targetDiscountPercent != null && (
-                      <span>
-                        discount ≥ {p.targetDiscountPercent}%
-                      </span>
+                      <span>discount ≥ {p.targetDiscountPercent}%</span>
                     )}
                   </div>
                 )}

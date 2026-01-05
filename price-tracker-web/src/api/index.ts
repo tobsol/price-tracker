@@ -1,5 +1,5 @@
 // src/api/index.ts
-import { API_BASE_URL, ADMIN_TOKEN } from "../config";
+import { API_BASE_URL } from "../config";
 
 // ----- Types that match the Mongo-backed API -----
 
@@ -37,16 +37,6 @@ export type PreviewResponse = {
   price: number;
   currency?: string;
   url: string;
-};
-
-export type TickResponse = {
-  ok: boolean;
-  reason: string;
-  checked: number;
-  drops: number;
-  totalTracked: number;
-  emailed: number;
-  at: string;
 };
 
 export type AddProductPayload = {
@@ -104,25 +94,4 @@ export async function listProducts() {
   }
 
   return (await res.json()) as Tracked[];
-}
-
-// Manually re-check all products (Authorization + small JSON body)
-export async function tickNow(reason: string = "manual", token?: string) {
-  const auth = token ?? ADMIN_TOKEN;
-
-  const res = await fetch(`${API_BASE_URL}/admin/tick`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
-    },
-    body: JSON.stringify({ reason }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Tick failed: ${res.status} ${text || res.statusText}`);
-  }
-
-  return (await res.json()) as TickResponse;
 }
