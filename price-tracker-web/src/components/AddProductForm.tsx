@@ -16,6 +16,151 @@ export default function AddProductForm({ onTracked }: { onTracked?: () => void }
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
 
+  const canSubmit = !loading && !!url.trim();
+
+  const styles: Record<string, React.CSSProperties> = {
+    card: {
+      marginTop: 14,
+      padding: 16,
+      borderRadius: 14,
+      border: "1px solid rgba(0,0,0,0.08)",
+      background: "rgba(0,0,0,0.02)",
+    },
+    title: {
+      marginTop: 0,
+      marginBottom: 6,
+      fontSize: "1.1rem",
+      letterSpacing: "-0.01em",
+    },
+    subtitle: {
+      marginTop: 0,
+      marginBottom: 14,
+      opacity: 0.8,
+      lineHeight: 1.5,
+      maxWidth: 700,
+    },
+    formGrid: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+    },
+    label: {
+      fontWeight: 600,
+      fontSize: "0.92rem",
+      display: "block",
+    },
+    hint: {
+      marginTop: 6,
+      opacity: 0.75,
+      fontSize: "0.92rem",
+      lineHeight: 1.45,
+    },
+    input: {
+      marginTop: 6,
+      width: "100%",
+      padding: "10px 12px",
+      border: "1px solid rgba(0,0,0,0.18)",
+      borderRadius: 12,
+      background: "#fff",
+      outline: "none",
+    },
+    inputSmall: {
+      marginTop: 6,
+      width: "100%",
+      padding: "9px 10px",
+      border: "1px solid rgba(0,0,0,0.18)",
+      borderRadius: 12,
+      background: "#fff",
+      outline: "none",
+    },
+    row: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 12,
+      marginTop: 2,
+    },
+    field: {
+      flex: "1 1 180px",
+      minWidth: 180,
+    },
+    actions: {
+      marginTop: 12,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 10,
+      alignItems: "center",
+    },
+    primaryBtn: {
+      padding: "10px 14px",
+      borderRadius: 12,
+      border: "1px solid #111",
+      background: "#111",
+      color: "#fff",
+      fontWeight: 650,
+      cursor: "pointer",
+    },
+    secondaryBtn: {
+      padding: "10px 14px",
+      borderRadius: 12,
+      border: "1px solid rgba(0,0,0,0.25)",
+      background: "#fff",
+      color: "#111",
+      fontWeight: 600,
+      cursor: "pointer",
+    },
+    disabled: {
+      opacity: 0.55,
+      cursor: "not-allowed",
+    },
+    error: {
+      marginTop: 12,
+      color: "#b00020",
+      fontWeight: 600,
+    },
+    previewBox: {
+      marginTop: 14,
+      padding: 12,
+      borderRadius: 12,
+      border: "1px solid rgba(0,0,0,0.08)",
+      background: "#fff",
+    },
+    previewTitle: {
+      fontWeight: 750,
+      marginBottom: 6,
+      lineHeight: 1.35,
+    },
+    previewMeta: {
+      opacity: 0.85,
+      lineHeight: 1.5,
+    },
+    previewLink: {
+      marginTop: 10,
+      display: "inline-block",
+      fontWeight: 650,
+      textDecoration: "none",
+    },
+    note: {
+      marginTop: 10,
+      opacity: 0.72,
+      fontSize: "0.92rem",
+      lineHeight: 1.45,
+    },
+    badgeRow: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 10,
+    },
+    badge: {
+      fontSize: "0.85rem",
+      padding: "4px 8px",
+      borderRadius: 999,
+      border: "1px solid rgba(0,0,0,0.12)",
+      background: "rgba(0,0,0,0.03)",
+      opacity: 0.9,
+    },
+  };
+
   async function handlePreview(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = url.trim();
@@ -80,64 +225,39 @@ export default function AddProductForm({ onTracked }: { onTracked?: () => void }
   }
 
   return (
-    <div
-      style={{
-        marginTop: 24,
-        padding: 16,
-        borderRadius: 12,
-        border: "1px solid #ddd",
-        maxWidth: 640,
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Add a product to track</h2>
-      <p style={{ marginTop: 4, marginBottom: 16, opacity: 0.8 }}>
-        Paste a product URL, optionally set your size and alert thresholds.
+    <div style={styles.card}>
+      <h2 style={styles.title}>Add a product</h2>
+      <p style={styles.subtitle}>
+        Paste a product URL and (optionally) set your size and alert thresholds.
+        We’ll monitor it automatically and email you when your condition is met.
       </p>
 
       <form onSubmit={handlePreview}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ fontWeight: 500 }}>
+        <div style={styles.formGrid}>
+          <label style={styles.label}>
             Product URL
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.loepeshop.no/..."
-              style={{
-                marginTop: 4,
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #ccc",
-                borderRadius: 10,
-              }}
+              placeholder="https://www.store.com/product/..."
+              style={styles.input}
             />
           </label>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
-            <label style={{ flex: "1 1 120px", minWidth: 120 }}>
+          <div style={styles.row}>
+            <label style={{ ...styles.label, ...styles.field, fontWeight: 600 }}>
               Size (optional)
               <input
                 type="text"
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
                 placeholder="e.g. EU 42"
-                style={{
-                  marginTop: 4,
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #ccc",
-                }}
+                style={styles.inputSmall}
               />
             </label>
 
-            <label style={{ flex: "1 1 140px", minWidth: 140 }}>
+            <label style={{ ...styles.label, ...styles.field, fontWeight: 600 }}>
               Target price (optional)
               <input
                 type="number"
@@ -145,17 +265,11 @@ export default function AddProductForm({ onTracked }: { onTracked?: () => void }
                 value={targetPrice}
                 onChange={(e) => setTargetPrice(e.target.value)}
                 placeholder="e.g. 1200"
-                style={{
-                  marginTop: 4,
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #ccc",
-                }}
+                style={styles.inputSmall}
               />
             </label>
 
-            <label style={{ flex: "1 1 160px", minWidth: 160 }}>
+            <label style={{ ...styles.label, ...styles.field, fontWeight: 600 }}>
               Target discount % (optional)
               <input
                 type="number"
@@ -163,79 +277,80 @@ export default function AddProductForm({ onTracked }: { onTracked?: () => void }
                 value={targetDiscountPercent}
                 onChange={(e) => setTargetDiscountPercent(e.target.value)}
                 placeholder="e.g. 25"
-                style={{
-                  marginTop: 4,
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #ccc",
-                }}
+                style={styles.inputSmall}
               />
             </label>
           </div>
 
-          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+          <div style={styles.actions}>
+            {/* Primary action */}
+            <button
+              type="button"
+              onClick={handleTrack}
+              disabled={!canSubmit}
+              style={{
+                ...styles.primaryBtn,
+                ...(canSubmit ? {} : styles.disabled),
+              }}
+            >
+              {loading ? "Working..." : "Start tracking"}
+            </button>
+
+            {/* Secondary action */}
             <button
               type="submit"
-              disabled={loading || !url.trim()}
+              disabled={!canSubmit}
               style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid #111",
-                background: "#111",
-                color: "white",
-                opacity: loading || !url.trim() ? 0.6 : 1,
-                cursor: loading || !url.trim() ? "not-allowed" : "pointer",
+                ...styles.secondaryBtn,
+                ...(canSubmit ? {} : styles.disabled),
               }}
             >
               {loading ? "Working..." : "Preview"}
             </button>
-            <button
-              type="button"
-              onClick={handleTrack}
-              disabled={loading || !url.trim()}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid #111",
-                background: "white",
-                color: "#111",
-                opacity: loading || !url.trim() ? 0.6 : 1,
-                cursor: loading || !url.trim() ? "not-allowed" : "pointer",
-              }}
-            >
-              Start tracking
-            </button>
+          </div>
+
+          <div style={styles.note}>
+            Scheduled checks run in the background. You do not need to refresh or re-check manually.
           </div>
         </div>
       </form>
 
-      {error && (
-        <div style={{ marginTop: 12, color: "#b00020" }}>
-          {error}
-        </div>
-      )}
+      {error && <div style={styles.error}>{error}</div>}
 
       {preview && (
-        <div
-          style={{
-            marginTop: 16,
-            paddingTop: 12,
-            borderTop: "1px dashed #ddd",
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>{preview.title ?? "Preview"}</div>
-          <div style={{ marginTop: 4 }}>
-            Current price: {preview.price} {preview.currency ?? ""}
+        <div style={styles.previewBox}>
+          <div style={styles.previewTitle}>{preview.title ?? "Preview"}</div>
+
+          <div style={styles.previewMeta}>
+            <div>
+              <strong>Current price:</strong> {preview.price} {preview.currency ?? ""}
+            </div>
           </div>
+
+          <div style={styles.badgeRow}>
+            {size.trim() ? <span style={styles.badge}>Size: {size.trim()}</span> : null}
+            {targetPrice.trim() ? (
+              <span style={styles.badge}>Target price: {targetPrice.trim()}</span>
+            ) : null}
+            {targetDiscountPercent.trim() ? (
+              <span style={styles.badge}>
+                Target discount: {targetDiscountPercent.trim()}%
+              </span>
+            ) : null}
+          </div>
+
           <a
             href={preview.url}
             target="_blank"
             rel="noreferrer"
-            style={{ marginTop: 8, display: "inline-block" }}
+            style={styles.previewLink}
           >
-            View product
+            View product →
           </a>
+
+          <div style={styles.hint}>
+            If everything looks correct, click <strong>Start tracking</strong>.
+          </div>
         </div>
       )}
     </div>
