@@ -12,5 +12,5 @@ jobs:
       - name: Call tick endpoint
         run: |
           curl -sS -X POST "${{ secrets.TICK_URL }}" \
-            -H "Authorization: Bearer ${{ secrets.ADMIN_TOKEN }}" \
+            -H "x-admin-token: ${{ secrets.ADMIN_TOKEN }}" \
             --fail
