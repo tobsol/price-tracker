@@ -161,9 +161,7 @@ export default function TrackedProducts() {
     <div style={styles.section}>
       <div style={styles.headerRow}>
         <h2 style={styles.title}>Tracked products</h2>
-        <p style={styles.sub}>
-          {items.length > 0 ? `${items.length} active` : ""}
-        </p>
+        <p style={styles.sub}>{items.length > 0 ? `${items.length} active` : ""}</p>
       </div>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -174,16 +172,15 @@ export default function TrackedProducts() {
         <div style={styles.empty}>
           <div style={styles.emptyTitle}>Nothing tracked yet</div>
           <p style={styles.emptyBody}>
-            Add a product URL above and set your alert. We’ll monitor it
-            automatically on a schedule and email you when the price hits.
+            Add a product URL above and (optionally) set your alert. We’ll monitor it
+            automatically on a schedule and email you on a price drop by default — or
+            when your thresholds are met.
           </p>
         </div>
       ) : (
         <ul style={{ ...styles.grid, maxWidth: 900 }}>
           {items.map((p) => {
-            const createdDate = p.createdAt
-              ? new Date(p.createdAt).toLocaleString()
-              : null;
+            const createdDate = p.createdAt ? new Date(p.createdAt).toLocaleString() : null;
 
             const lowestDate = p.lowestPriceDate
               ? new Date(p.lowestPriceDate).toLocaleDateString()
@@ -198,15 +195,12 @@ export default function TrackedProducts() {
                 <div style={styles.topRow}>
                   <div style={{ minWidth: 0 }}>
                     <div style={styles.name}>{p.title ?? "Product"}</div>
-                    <div style={styles.meta}>
-                      {p.size ? `Size: ${p.size}` : "Size: not set"}
-                    </div>
+                    <div style={styles.meta}>{p.size ? `Size: ${p.size}` : "Size: not set"}</div>
 
                     <div style={styles.badges}>
                       {p.targetPrice != null && (
                         <span style={styles.badge}>
-                          Alert: price ≤{" "}
-                          {formatCurrency(p.targetPrice, p.currency)}
+                          Alert: price ≤ {formatCurrency(p.targetPrice, p.currency)}
                         </span>
                       )}
                       {p.targetDiscountPercent != null && (
@@ -215,7 +209,7 @@ export default function TrackedProducts() {
                         </span>
                       )}
                       {p.targetPrice == null && p.targetDiscountPercent == null && (
-                        <span style={styles.badge}>No alerts set</span>
+                        <span style={styles.badge}>Alert: price drop (default)</span>
                       )}
                     </div>
                   </div>
@@ -223,9 +217,7 @@ export default function TrackedProducts() {
                   <div style={styles.kpiBox}>
                     <div style={styles.kpiMain}>{current ?? "—"}</div>
 
-                    {initial && (
-                      <div style={styles.kpiLine}>Initial: {initial}</div>
-                    )}
+                    {initial && <div style={styles.kpiLine}>Initial: {initial}</div>}
 
                     {p.changeFromInitialPercent != null && (
                       <div style={styles.kpiLine}>
@@ -242,22 +234,18 @@ export default function TrackedProducts() {
                       </div>
                     )}
 
-                    {p.dropFromInitialPercent != null &&
-                      p.dropFromInitialPercent > 0 && (
-                        <div style={styles.kpiLine}>
-                          Discount vs initial:{" "}
-                          <span style={{ fontWeight: 750 }}>
-                            {p.dropFromInitialPercent}%
-                          </span>
-                        </div>
-                      )}
+                    {p.dropFromInitialPercent != null && p.dropFromInitialPercent > 0 && (
+                      <div style={styles.kpiLine}>
+                        Discount vs initial:{" "}
+                        <span style={{ fontWeight: 750 }}>{p.dropFromInitialPercent}%</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {(p.lowestPrice != null || p.lowestPriceDate != null) && (
                   <div style={{ fontSize: 13, opacity: 0.85 }}>
-                    <strong>Lowest:</strong>{" "}
-                    {lowest ?? "—"}
+                    <strong>Lowest:</strong> {lowest ?? "—"}
                     {lowestDate ? ` (on ${lowestDate})` : ""}
                   </div>
                 )}
@@ -284,11 +272,7 @@ export default function TrackedProducts() {
                   </div>
                 )}
 
-                {createdDate && (
-                  <div style={styles.footerLine}>
-                    Tracking since {createdDate}
-                  </div>
-                )}
+                {createdDate && <div style={styles.footerLine}>Tracking since {createdDate}</div>}
               </li>
             );
           })}
